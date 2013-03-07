@@ -10,6 +10,7 @@
 # Levi Brown
 # mailto:levigroker@gmail.com
 # March 7, 2013
+# https://github.com/levigroker/iOSContinuousIntegration
 ##
 
 function usage()
