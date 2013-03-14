@@ -44,9 +44,12 @@ set -eu
 # ----------------------
 # Configuration Section
 # ----------------------
+# Prevent sensitive info from going to the console in debug mode.
+[ $DEBUG -ne 0 ] && set +x
 # The password for the KEYCHAIN containing the credentials, certificates and keys needed
 # for the build.
 KEYCHAIN_PASSWORD=${KEYCHAIN_PASSWORD:-""}
+[ $DEBUG -ne 0 ] && set -x
 # The name of the resulting application (for instance, the IPA will be named "$APP_NAME.ipa")
 APP_NAME=${APP_NAME:-""}
 PROJECT_NAME=${PROJECT_NAME:-"$APP_NAME"}
@@ -127,12 +130,14 @@ if [ "$PROJECT_NAME" = "" ]; then
 	fail "Empty PROJECT_NAME specified. Please export PROJECT_NAME with the project name."
 fi
 
-if [ "$KEYCHAIN_PASSWORD" = "" ]; then
-	fail "Empty KEYCHAIN_PASSWORD specified. Please export KEYCHAIN_PASSWORD with build user's keychain password."
-fi
-
 if [ "$JENKINS_USER" = "" ]; then
 	fail "Empty JENKINS_USER specified. Please export JENKINS_USER with the desired Jenkins username."
+fi
+
+# Prevent sensitive info from going to the console in debug mode.
+[ $DEBUG -ne 0 ] && set +x
+if [ "$KEYCHAIN_PASSWORD" = "" ]; then
+	fail "Empty KEYCHAIN_PASSWORD specified. Please export KEYCHAIN_PASSWORD with build user's keychain password."
 fi
 
 if [ "$JENKINS_API_TOKEN" = "" ]; then
@@ -146,6 +151,7 @@ fi
 if [ "$TF_TEAM_TOKEN" = "" ]; then
 	usage "Empty TestFlight Team token specified. Please export TF_API_TOKEN with the needed team token."
 fi
+[ $DEBUG -ne 0 ] && set -x
 
 ## Main
 
@@ -164,6 +170,7 @@ rm -rf "$OUTPUT"
 mkdir -p "$OUTPUT"
 
 echo "Unlocking keychain..."
+# Prevent sensitive info from going to the console in debug mode.
 [ $DEBUG -ne 0 ] && set +x
 /usr/bin/security list-keychains -s "$KEYCHAIN"
 /usr/bin/security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
@@ -213,8 +220,9 @@ for CONFIG in $CONFIGURATIONS; do
 		fail "Expected provisioning profile not found: \"$CERT\""
 	fi
 
-	# Build and execute the tests
 	cd "$PROJECT_DIR"
+
+	# Build and execute the tests
 	xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$TEST_SCHEME" -configuration $CONFIG -sdk $SIMULATOR_SDK clean;
 	GHUNIT_CLI=1 WRITE_JUNIT_XML=YES xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$TEST_SCHEME" -configuration $CONFIG -sdk $SIMULATOR_SDK build || fail "Xcode test build failed.";
 
@@ -260,6 +268,10 @@ for CONFIG in $CONFIGURATIONS; do
 	echo "dSYM file ready for upload"
 
 	# Upload to TestFlight
-	echo "Distributing to TestFlight list(s): $TF_DIST_LISTS"
-	[ $TF_UPLOAD -ne 0 ] && . "$RESOURCE_DIR/jenkins/$TEST_FLIGHT_UPLOAD_SCRIPT" "$OUTPUT/$IPA_NAME" "$OUTPUT/$DSYM_ZIP" "$RELEASE_NOTES" "$TF_DIST_LISTS"
+	if [ $TF_UPLOAD -ne 0 ]; then
+		echo "Distributing to TestFlight list(s): $TF_DIST_LISTS"
+		. "$RESOURCE_DIR/jenkins/$TEST_FLIGHT_UPLOAD_SCRIPT" "$OUTPUT/$IPA_NAME" "$OUTPUT/$DSYM_ZIP" "$RELEASE_NOTES" "$TF_DIST_LISTS"
+	fi
 done
+
+exit 0
