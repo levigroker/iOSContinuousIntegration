@@ -3,13 +3,26 @@ iOS Continuous Integration
 A collection of scripts to automate the build and deploy steps of iOS applications for
 continuous integration via the excellent [Jenkins](http://jenkins-ci.org).
 
-### Installing
+# Jenkins Automation
 
-#### Dependencies
+`jenkins_autoupdate.sh`
+A script to automatically update the Jenkins web application if a new version is
+available. The intention is for this script to be executed periodically as a Jenkins Job.
+
+# Continuous Integration
+
+The following files make up the CI portion of this repository:
+
+`build.sh`
+`download_profile.sh`
+`last_success_rev.sh`
+`testflight.sh`
+
+## Dependencies
 [cupertino](https://github.com/mattt/cupertino) is used to fetch the latest distribution
 provisioning profile from the Apple iOS Developer portal.
 
-#### Install
+## Install
 
 Let's say you have a workspace set up called Foo.xcworkspace. At the same level of your
 workspace, there's typically a directory called "Foo" which contains your sources. These
@@ -25,7 +38,7 @@ your directory structure should look like this:
 			testflight.sh
 
 
-#### Configuration
+## Configuration
 
 Assuming you've created a Jenkins freeform job for your build, create an "Execute Shell"
 build step, and pass in the needed configuration values, like this:
@@ -57,12 +70,12 @@ your configuration is not output to the Jenkins log. To do this, simply add `#!/
 as the first line of the "Execute Shell" script. This will replace the default of
 `#!/bin/sh -ex` (note the 'x') which prints out all evaluations.
 
-#### Licence
+# Licence
 
 This work is licensed under the [Creative Commons Attribution 3.0 Unported License](http://creativecommons.org/licenses/by/3.0/).
 Please see the included LICENSE.txt for complete details.
 
-#### About
+# About
 A professional iOS engineer by day, my name is Levi Brown. Authoring a technical
 blog [grokin.gs](http://grokin.gs), I am reachable via:
 
