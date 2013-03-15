@@ -74,5 +74,5 @@ if [ "$JENKINS_VERSION" != "$NEW_VERSION" ]; then
 	mv jenkins.war "$WAR_DEPLOY_PATH"
 	echo "Jenkins $NEW_VERSION deployed!"
 else
-	echo "No update needed, we are at $JENKINS_VERSION and the most recent version is $NEW_VERSION."
+	echo "No update needed; we are at $JENKINS_VERSION and the most recent version is $NEW_VERSION."
 fi
