@@ -17,13 +17,13 @@
 # https://github.com/levigroker/iOSContinuousIntegration
 ##
 
-JENKINS_URL="http://grokers.net/jenkins/"
-
 function fail()
 {
     echo "Failed: $@" >&2
     exit 1
 }
+DEBUG=${DEBUG:-0}
+export DEBUG
 
 set -eu
 [ $DEBUG -ne 0 ] && set -x
