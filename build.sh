@@ -57,8 +57,9 @@ PROJECT_NAME=${PROJECT_NAME:-"$APP_NAME"}
 # project file.
 PROJECT_DIR="$PROJECT_NAME"
 # Subdirectory of the PROJECT_DIR containing the project sources and resources
-# $RESOURCE_DIR/jenkins should contain the provisioning profile(s) and this script.
+# $RESOURCE_DIR/$CI_DIR should contain the provisioning profile(s) and this script.
 RESOURCE_DIR="$PROJECT_NAME"
+CI_DIR="jenkins"
 XCODE_WORKSPACE="$PROJECT_NAME.xcworkspace"
 MAIN_SCHEME="$PROJECT_NAME"
 TEST_SCHEME="Tests"
@@ -109,11 +110,12 @@ SIMULATOR_SDK="iphonesimulator"
 GIT_LOG_FORMAT="%ai %an: %s"
 KEYCHAIN="$HOME/Library/Keychains/login.keychain"
 PROFILE_HOME="$HOME/Library/MobileDevice/Provisioning Profiles/"
-# Script relative to $RESOURCE_DIR/jenkins which will download mobileprovision profile files
-PROFILE_DOWNLOAD_SCRIPT="download_profile.sh"
-# Script relative to $RESOURCE_DIR/jenkins which will upload the built IPA
+# Script relative to $RESOURCE_DIR/$CI_DIR which will download mobileprovision profile files
+#PROFILE_ACQUISITION_SCRIPT="download_profile.sh"
+PROFILE_ACQUISITION_SCRIPT="local_profile.sh"
+# Script relative to $RESOURCE_DIR/$CI_DIR which will upload the built IPA
 TEST_FLIGHT_UPLOAD_SCRIPT="testflight.sh"
-# Script relative to $RESOURCE_DIR/jenkins which will get the last successful revision hash
+# Script relative to $RESOURCE_DIR/$CI_DIR which will get the last successful revision hash
 LAST_SUCCESS_REV_SCRIPT="last_success_rev.sh"
 
 # -------------------------
@@ -157,12 +159,14 @@ fi
 
 echo "Jenkins workspace: \"$WORKSPACE\""
 
-# Capture the full path to our project
+# Capture the full path to our project and related subdirectories
 cd "$PROJECT_DIR"
-PROJECT_DIR="$(pwd)"
+export PROJECT_DIR="$(pwd)"
 echo "$APP_NAME project directory: \"$PROJECT_DIR\""
-RESOURCE_DIR="$PROJECT_DIR/$RESOURCE_DIR"
+export RESOURCE_DIR="$PROJECT_DIR/$RESOURCE_DIR"
 echo "$APP_NAME resource directory: \"$RESOURCE_DIR\""
+export CI_DIR="$RESOURCE_DIR/$CI_DIR"
+echo "$APP_NAME CI directory: \"$CI_DIR\""
 
 # Set up our output directory
 export OUTPUT="$PROJECT_DIR/output"
@@ -178,7 +182,7 @@ echo "Unlocking keychain..."
 
 # Fetch the release notes from source control
 echo "Fetching release notes from source control..."
-LAST_SUCCESS_REV=${LAST_SUCCESS_REV:-$("$RESOURCE_DIR/jenkins/$LAST_SUCCESS_REV_SCRIPT" "$JOB_URL")}
+LAST_SUCCESS_REV=${LAST_SUCCESS_REV:-$("$CI_DIR/$LAST_SUCCESS_REV_SCRIPT" "$JOB_URL")}
 [ "$LAST_SUCCESS_REV" = "" ] && echo "Could not determine last successful build revision from Jenkins" || echo "Last build success revision: $LAST_SUCCESS_REV"
 [ "$LAST_SUCCESS_REV" = "" ] && RELEASE_NOTES=$(git show -s --format="$GIT_LOG_FORMAT") || RELEASE_NOTES=$(git log --pretty="$GIT_LOG_FORMAT" $LAST_SUCCESS_REV..HEAD)
 [ "$RELEASE_NOTES" = "" ] && RELEASE_NOTES="(no release notes)"
@@ -197,6 +201,9 @@ echo "Version \"$FULLVERSION\" Building..."
 for CONFIG in $CONFIGURATIONS; do
 	echo "Building for \"$CONFIG\" configuration..."
 
+	# Clean up any Xcode Derived Data from past builds
+	rm -f "$HOME/Library/Developer/Xcode/DerivedData/*"
+
 	# Clean up existing mobileprovisions in favor of what's in source control
 	if [ -d "$PROFILE_HOME" ] ; then
 		cd "$PROFILE_HOME"
@@ -206,16 +213,16 @@ for CONFIG in $CONFIGURATIONS; do
 
 	# Get the profile name from our configuration
 	PROFILE_NAME=$(eval echo \$`echo $CONFIG`)
-	echo "Downloading provisioning profile \"$PROFILE_NAME\""
+	echo "Acquiring provisioning profile \"$PROFILE_NAME\""
 
 	# Ensure the needed directory structure is in place to receive the mobileprovision profile
 	[ -d "$PROFILE_HOME" ] || mkdir -p "$PROFILE_HOME"
 
-	# Download the profile
+	# Acquire the profile
 	cd "$PROFILE_HOME"
-	CERT=`. "$RESOURCE_DIR/jenkins/$PROFILE_DOWNLOAD_SCRIPT" "$PROFILE_TYPE" "$PROFILE_NAME"`
+	CERT=`. "$CI_DIR/$PROFILE_ACQUISITION_SCRIPT" "$PROFILE_TYPE" "$PROFILE_NAME"`
 	if [ -f "$CERT" ]; then
-		echo "Successfully downloaded provisioning profile: \"$CERT\""
+		echo "Successfully acquired provisioning profile: \"$CERT\""
 	else
 		fail "Expected provisioning profile not found: \"$CERT\""
 	fi
@@ -270,7 +277,7 @@ for CONFIG in $CONFIGURATIONS; do
 	# Upload to TestFlight
 	if [ $TF_UPLOAD -ne 0 ]; then
 		echo "Distributing to TestFlight list(s): $TF_DIST_LISTS"
-		. "$RESOURCE_DIR/jenkins/$TEST_FLIGHT_UPLOAD_SCRIPT" "$OUTPUT/$IPA_NAME" "$OUTPUT/$DSYM_ZIP" "$RELEASE_NOTES" "$TF_DIST_LISTS"
+		. "$CI_DIR/$TEST_FLIGHT_UPLOAD_SCRIPT" "$OUTPUT/$IPA_NAME" "$OUTPUT/$DSYM_ZIP" "$RELEASE_NOTES" "$TF_DIST_LISTS"
 	fi
 done
 
