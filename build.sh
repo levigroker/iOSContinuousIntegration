@@ -202,7 +202,9 @@ for CONFIG in $CONFIGURATIONS; do
 	echo "Building for \"$CONFIG\" configuration..."
 
 	# Clean up any Xcode Derived Data from past builds
-	rm -f "$HOME/Library/Developer/Xcode/DerivedData/*"
+	echo "Cleaning up old Xcode Derived Data."
+	DD_DIR="$HOME/Library/Developer/Xcode/DerivedData"
+	rm -rf "$DD_DIR" && mkdir -p "$DD_DIR"
 
 	# Clean up existing mobileprovisions in favor of what's in source control
 	if [ -d "$PROFILE_HOME" ] ; then
