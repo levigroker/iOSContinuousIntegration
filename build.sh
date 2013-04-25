@@ -206,6 +206,18 @@ for CONFIG in $CONFIGURATIONS; do
 	DD_DIR="$HOME/Library/Developer/Xcode/DerivedData"
 	rm -rf "$DD_DIR" && mkdir -p "$DD_DIR"
 
+	# Clean up any Xcode cache from past builds
+	echo "Cleaning up Xcode Cache."
+	# Fetch the CACHE_ROOT from the xcode build configuration directly
+	CACHE_ROOT=`xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$MAIN_SCHEME" -configuration $CONFIG -showBuildSettings | grep ' CACHE_ROOT' | uniq | awk '{ print $3}'`
+	rm -rf "$CACHE_ROOT" && mkdir -p "$CACHE_ROOT"
+
+	# Clean up GHTest results
+	echo "Cleaning up GHTest results."
+	GHUNIT_TMPDIR=`/usr/bin/getconf DARWIN_USER_TEMP_DIR`
+	GHUNIT_RESULTS_DIR="${GHUNIT_TMPDIR}test-results"
+	rm -rf "$GHUNIT_RESULTS_DIR" && mkdir -p "$GHUNIT_RESULTS_DIR"
+
 	# Clean up existing mobileprovisions in favor of what's in source control
 	if [ -d "$PROFILE_HOME" ] ; then
 		cd "$PROFILE_HOME"
