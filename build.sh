@@ -61,18 +61,33 @@ PROJECT_DIR="$PROJECT_NAME"
 RESOURCE_DIR="$PROJECT_NAME"
 CI_DIR="jenkins"
 XCODE_WORKSPACE="$PROJECT_NAME.xcworkspace"
-MAIN_SCHEME="$PROJECT_NAME"
-TEST_SCHEME="Tests"
-MASTER_BRANCH_NAME="master"
+# Constants
+YES="Yes"
+NO="No"
+TEST_TYPE="Test"
+IPA_TYPE="IPA"
 
 ## Build Configurations
-# The space separated list of Xcode project configurations to build.
-CONFIGURATIONS="AdHoc"
-# Each configuration listed in CONFIGURATIONS should have a corresponding mobileprovision
-# name defined.
-AdHoc="$PROJECT_NAME AdHoc"
+SCHEMES=("Tests" "$PROJECT_NAME" "$PROJECT_NAME Enterprise")
+SCHEME_ENABLEDS=("$YES" "$YES" "$YES")
+SCHEME_LABELS=("Tests" "AdHoc" "Enterprise")
+BUILD_TYPES=("$TEST_TYPE" "$IPA_TYPE" "$IPA_TYPE")
+CONFIGS=("AdHoc" "AdHoc" "Enterprise")
+PROFILE_NAMES=("$PROJECT_NAME AdHoc" "$PROJECT_NAME AdHoc" "$PROJECT_NAME Enterprise")
 # The type of profile (used to download the profile from the Apple Developer portal)
-PROFILE_TYPE="distribution"
+PROFILE_TYPES=("distribution" "distribution" "distribution")
+# Script relative to $RESOURCE_DIR/$CI_DIR which will download mobileprovision profile files
+PROFILE_ACQUISITION_SCRIPTS=("local_profile.sh" "local_profile.sh" "local_profile.sh")
+
+## TestFlight distribution lists
+# Each scheme listed in SCHEMES should have a corresponding TestFlight list defined.
+TF_DIST_LISTS=("" "Development" "Enterprise")
+# TestFlight upload configuration
+export TF_API_TOKEN=${TF_API_TOKEN:-""}
+export TF_TEAM_TOKEN=${TF_TEAM_TOKEN:-""}
+# You can prevent the build from uploading to TestFlight by specifying TF_UPLOAD=0, like:
+# % TF_UPLOAD=0 /bin/sh MyProject/MyProject/jenkins/build.sh
+TF_UPLOAD=${TF_UPLOAD:-1}
 
 ## Jenkins Configuration
 # See https://wiki.jenkins-ci.org/display/JENKINS/Authenticating+scripted+clients
@@ -83,18 +98,6 @@ export JENKINS_API_TOKEN=${JENKINS_API_TOKEN:-""}
 # Determine what branch is being built so we can behave accordingly
 # Pull this information from git directly if not already set
 BRANCH=${BRANCH:-"$(git describe --contains --all HEAD | sed 's|^.*/||')"}
-
-## TestFlight distribution lists
-# Default:
-TF_DIST_LISTS="Development"
-# "master" branch
-[ "$BRANCH" = "$MASTER_BRANCH_NAME" ] && TF_DIST_LISTS="Internal Release"
-# TestFlight upload configuration
-export TF_API_TOKEN=${TF_API_TOKEN:-""}
-export TF_TEAM_TOKEN=${TF_TEAM_TOKEN:-""}
-# You can prevent the build from uploading to TestFlight by specifying TF_UPLOAD=0, like:
-# % TF_UPLOAD=0 /bin/sh MyProject/MyProject/jenkins/build.sh
-TF_UPLOAD=${TF_UPLOAD:-1}
 
 # -----------------------
 
@@ -110,9 +113,6 @@ SIMULATOR_SDK="iphonesimulator"
 GIT_LOG_FORMAT="%ai %an: %s"
 KEYCHAIN="$HOME/Library/Keychains/login.keychain"
 PROFILE_HOME="$HOME/Library/MobileDevice/Provisioning Profiles/"
-# Script relative to $RESOURCE_DIR/$CI_DIR which will download mobileprovision profile files
-#PROFILE_ACQUISITION_SCRIPT="download_profile.sh"
-PROFILE_ACQUISITION_SCRIPT="local_profile.sh"
 # Script relative to $RESOURCE_DIR/$CI_DIR which will upload the built IPA
 TEST_FLIGHT_UPLOAD_SCRIPT="testflight.sh"
 # Script relative to $RESOURCE_DIR/$CI_DIR which will get the last successful revision hash
@@ -198,8 +198,27 @@ agvtool new-marketing-version "$MARKETING_VERSION"
 FULLVERSION="$(agvtool mvers -terse1) ($(agvtool vers -terse)) $BRANCH"
 echo "Version \"$FULLVERSION\" Building..."
 
-for CONFIG in $CONFIGURATIONS; do
-	echo "Building for \"$CONFIG\" configuration..."
+INDX=0
+for SCHEME in "${SCHEMES[@]}"; do
+
+	# Get our configuration for this scheme
+	SCHEME_LABEL="${SCHEME_LABELS[$INDX]}"
+	BUILD_TYPE="${BUILD_TYPES[$INDX]}"
+	CONFIG="${CONFIGS[$INDX]}"
+	PROFILE_NAME="${PROFILE_NAMES[$INDX]}"
+	PROFILE_TYPE="${PROFILE_TYPES[$INDX]}"
+	PROFILE_ACQUISITION_SCRIPT="${PROFILE_ACQUISITION_SCRIPTS[$INDX]}"
+	TF_DIST_LIST="${TF_DIST_LISTS[$INDX]}"
+
+	SCHEME_ENABLED="${SCHEME_ENABLEDS[$INDX]}"
+	if [ "$SCHEME_ENABLED" != "$YES" ]; then
+		echo "Skipping disabled $BUILD_TYPE build for \"$SCHEME\" target."
+		# Increment our array index
+		let INDX=INDX+1
+		continue
+	fi
+
+	echo "$BUILD_TYPE build for \"$SCHEME\" target with \"$CONFIG\" configuration..."
 
 	# Clean up any Xcode Derived Data from past builds
 	echo "Cleaning up old Xcode Derived Data."
@@ -209,7 +228,8 @@ for CONFIG in $CONFIGURATIONS; do
 	# Clean up any Xcode cache from past builds
 	echo "Cleaning up Xcode Cache."
 	# Fetch the CACHE_ROOT from the xcode build configuration directly
-	CACHE_ROOT=`xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$MAIN_SCHEME" -configuration $CONFIG -showBuildSettings | grep ' CACHE_ROOT' | uniq | awk '{ print $3}'`
+	cd "$PROJECT_DIR"
+	CACHE_ROOT=`xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$SCHEME" -configuration "$CONFIG" -showBuildSettings | grep ' CACHE_ROOT' | uniq | awk '{ print $3}'`
 	rm -rf "$CACHE_ROOT" && mkdir -p "$CACHE_ROOT"
 
 	# Clean up GHTest results
@@ -225,8 +245,6 @@ for CONFIG in $CONFIGURATIONS; do
 		rm -f *.mobileprovision
 	fi
 
-	# Get the profile name from our configuration
-	PROFILE_NAME=$(eval echo \$`echo $CONFIG`)
 	echo "Acquiring provisioning profile \"$PROFILE_NAME\""
 
 	# Ensure the needed directory structure is in place to receive the mobileprovision profile
@@ -243,56 +261,72 @@ for CONFIG in $CONFIGURATIONS; do
 
 	cd "$PROJECT_DIR"
 
-	# Build and execute the tests
-	xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$TEST_SCHEME" -configuration $CONFIG -sdk $SIMULATOR_SDK clean;
-	GHUNIT_CLI=1 WRITE_JUNIT_XML=YES xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$TEST_SCHEME" -configuration $CONFIG -sdk $SIMULATOR_SDK build || fail "Xcode test build failed.";
+	if [ "$BUILD_TYPE" = "$TEST_TYPE" ]; then
 
-	# Move test results so Jenkins can locate them reliably
-	# Fetch the BUILD_ROOT from the xcode build configuration directly
-	TEST_BUILD_ROOT=`xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$TEST_SCHEME" -configuration $CONFIG -showBuildSettings | grep ' BUILD_ROOT' | uniq | awk '{ print $3}'`
-	TEST_OUTPUT_DIR="$TEST_BUILD_ROOT/test-results"
-	if [ -d "$TEST_OUTPUT_DIR" ]; then
-		cp -Rp "$TEST_OUTPUT_DIR" "$OUTPUT"
+		# Build and execute the tests
+		xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$SCHEME" -configuration "$CONFIG" -sdk $SIMULATOR_SDK clean;
+		GHUNIT_CLI=1 WRITE_JUNIT_XML=YES xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$SCHEME" -configuration "$CONFIG" -sdk $SIMULATOR_SDK build || fail "Xcode test build failed.";
+
+		# Move test results so Jenkins can locate them reliably
+		# Fetch the BUILD_ROOT from the xcode build configuration directly
+		TEST_BUILD_ROOT=`xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$SCHEME" -configuration "$CONFIG" -showBuildSettings | grep ' BUILD_ROOT' | uniq | awk '{ print $3}'`
+		TEST_OUTPUT_DIR="$TEST_BUILD_ROOT/test-results"
+		if [ -d "$TEST_OUTPUT_DIR" ]; then
+			cp -Rp "$TEST_OUTPUT_DIR" "$OUTPUT"
+		else
+			echo "No test output available at \"$TEST_OUTPUT_DIR\""
+		fi
+
+	elif [ "$BUILD_TYPE" = "$IPA_TYPE" ]; then
+
+		# Build the application
+		xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$SCHEME" -configuration "$CONFIG" -sdk $SDK clean;
+		xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$SCHEME" -configuration "$CONFIG" -sdk $SDK || fail "Xcode main build failed.";
+
+		echo "Building IPA..."
+		# Packaging
+		# Fetch the BUILT_PRODUCTS_DIR from the xcode build configuration directly
+		BUILT_PRODUCTS_DIR=`xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$SCHEME" -configuration "$CONFIG" -showBuildSettings | grep ' BUILT_PRODUCTS_DIR' | uniq | awk '{ print $3}'`
+		cd $BUILT_PRODUCTS_DIR
+		rm -rf "Payload"
+		rm -f "$APP_NAME".*.ipa
+		mkdir "Payload"
+		cp -Rp "$APP_NAME.app" "Payload"
+
+		# Copy the iTunesArtwork images to the Payload
+		IT_ARTS=("iTunesArtwork" "iTunesArtwork@2x")
+		for IT_ART in "${IT_ARTS[@]}"; do
+			[ $DEBUG -ne 0 ] && echo "Looking for \"$RESOURCE_DIR/$IT_ART\""
+			if [ -f "$RESOURCE_DIR/$IT_ART" ] ; then
+				cp -f "$RESOURCE_DIR/$IT_ART" "Payload" && echo "Copied \"$IT_ART\" to IPA."
+			fi
+		done
+
+		IPA_NAME="$APP_NAME $FULLVERSION $SCHEME_LABEL.ipa"
+		zip -r -y "$IPA_NAME" "Payload"
+
+		mv "$IPA_NAME" "$OUTPUT"
+
+		echo "Built $IPA_NAME"
+
+		# Zip up the dSYM file for uploading to TestFlight
+		DYSM_NAME="$APP_NAME.app.dSYM"
+		DSYM_ZIP="$APP_NAME $FULLVERSION $SCHEME_LABEL.app.dSYM.zip"
+		zip -r -y "$DSYM_ZIP" "$DYSM_NAME"
+		mv "$DSYM_ZIP" "$OUTPUT"
+		echo "dSYM file ready for upload"
+
+		# Upload to TestFlight
+		if [ $TF_UPLOAD -ne 0 ]; then
+			echo "Distributing to TestFlight list(s): $TF_DIST_LIST"
+			. "$CI_DIR/$TEST_FLIGHT_UPLOAD_SCRIPT" "$OUTPUT/$IPA_NAME" "$OUTPUT/$DSYM_ZIP" "$RELEASE_NOTES" "$TF_DIST_LIST"
+		fi
 	else
-		echo "No test output available at \"$TEST_OUTPUT_DIR\""
+		fail "Unhandled build type \"$BUILD_TYPE\""
 	fi
 
-	# Build the application
-	xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$MAIN_SCHEME" -configuration $CONFIG -sdk $SDK clean;
-	xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$MAIN_SCHEME" -configuration $CONFIG -sdk $SDK || fail "Xcode main build failed.";
-
-	echo "Building IPA..."
-	# Packaging
-	# Fetch the BUILT_PRODUCTS_DIR from the xcode build configuration directly
-	BUILT_PRODUCTS_DIR=`xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$MAIN_SCHEME" -configuration $CONFIG -showBuildSettings | grep ' BUILT_PRODUCTS_DIR' | uniq | awk '{ print $3}'`
-	cd $BUILT_PRODUCTS_DIR
-	rm -rf "Payload"
-	rm -f "$APP_NAME".*.ipa
-	mkdir "Payload"
-	cp -Rp "$APP_NAME.app" "Payload"
-	if [ -f "$RESOURCE_DIR/iTunesArtwork" ] ; then
-	    cp -f "$RESOURCE_DIR/iTunesArtwork" "Payload"
-	fi
-
-	IPA_NAME="$APP_NAME $FULLVERSION $CONFIG.ipa"
-	zip -r -y "$IPA_NAME" "Payload"
-
-	mv "$IPA_NAME" "$OUTPUT"
-
-	echo "Built $IPA_NAME"
-
-	# Zip up the dSYM file for uploading to TestFlight
-	DYSM_NAME="$APP_NAME.app.dSYM"
-	DSYM_ZIP="$DYSM_NAME.zip"
-	zip -r -y "$DSYM_ZIP" "$DYSM_NAME"
-	mv "$DSYM_ZIP" "$OUTPUT"
-	echo "dSYM file ready for upload"
-
-	# Upload to TestFlight
-	if [ $TF_UPLOAD -ne 0 ]; then
-		echo "Distributing to TestFlight list(s): $TF_DIST_LISTS"
-		. "$CI_DIR/$TEST_FLIGHT_UPLOAD_SCRIPT" "$OUTPUT/$IPA_NAME" "$OUTPUT/$DSYM_ZIP" "$RELEASE_NOTES" "$TF_DIST_LISTS"
-	fi
+	# Increment our array index
+	let INDX=INDX+1
 done
 
 exit 0

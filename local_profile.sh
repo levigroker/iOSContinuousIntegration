@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Uses a provisioning profile on the local filesystem.
-# See the PROFILE_FILE and EXPECTED_PROFILE_NAME in the Configuration Section.
+# See the PROFILE_NAMES and PROFILE_FILES in the Configuration Section.
 #
 # Levi Brown
 # mailto:levigroker@gmail.com
@@ -34,10 +34,11 @@ cd "$PROFILE_HOME"
 # ----------------------
 # Configuration Section
 # ----------------------
-#The hardcoded profile file
-PROFILE_FILE="CHANGE_ME.mobileprovision"
-#The hardcoded profile name we are expecting
-EXPECTED_PROFILE_NAME="CHANGE_ME AdHoc"
+#The hardcoded profile names we are expecting
+PROFILE_NAMES=("CHANGE_ME AdHoc" "CHANGE_ME Enterprise")
+#The matching profile files
+PROFILE_FILES=("CHANGE_ME_AdHoc.mobileprovision" "CHANGE_ME_Enterprise.mobileprovision")
+
 #The name of the desired profile (as entered in the dev portal)
 PROFILE_TYPE=${1:-""}
 #The profile type (could be either "distribution" or "development")
@@ -60,10 +61,20 @@ if [ "$PROFILE_NAME" = "" ]; then
 	usage "Empty profile name specified."
 fi
 
-# Hard Coded profile/name mapping for now
-
-if [ "$PROFILE_TYPE" != "distribution" -o "$PROFILE_NAME" != "$EXPECTED_PROFILE_NAME" ]; then
-	fail "Unsupported profile \"$PROFILE_NAME\" and type \"$PROFILE_TYPE\""
+if [ "$PROFILE_TYPE" = "distribution" ]; then
+	INDX=0
+	PROFILE_FILE=""
+	for EXPECTED_NAME in "${PROFILE_NAMES[@]}"; do
+		if [ "$PROFILE_NAME" = "$EXPECTED_NAME" ]; then
+			PROFILE_FILE="${PROFILE_FILES[$INDX]}"
+		fi
+		let INDX=INDX+1
+	done
+	if [ "$PROFILE_FILE" = "" ]; then
+		fail "Unsupported profile \"$PROFILE_NAME\""
+	fi
+else
+	fail "Unsupported profile type \"$PROFILE_TYPE\""
 fi
 
 `$CP "$PROFILE_DIR/$PROFILE_FILE" "$PROFILE_DEST"`
