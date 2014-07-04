@@ -3,6 +3,8 @@
 # A wrapper around Cupertino https://github.com/mattt/cupertino which allows for automated
 # downloads of named provisioning profiles.
 #
+# Compatible with cupertino 1.0.1 (ios 1.0.1)
+#
 # If the DEV_USER and DEV_PASSWORD environment variables are availalbe, we will use these
 # credentials to authenticate with the Apple Developer system. If not, then it is assumed
 # `ios login` has previously been performed and the needed credentials are already stored
@@ -52,6 +54,7 @@ PROFILE_NAME=${2:-""}
 DEBUG=${DEBUG:-0}
 
 # Fully qualified binaries
+GREP="/usr/bin/grep"
 AWK="/usr/bin/awk"
 SED="/usr/bin/sed"
 IOS="ios" # We'll just use the default since Ruby can do strange things with the path
@@ -73,7 +76,7 @@ IOS_LOGOUT=0
 [ $DEBUG -ne 0 ] && set +x
 if [ "$DEV_USER" != "" -a "$DEV_PASSWORD" != "" ]; then
 	# Login with supplied credentials
-	EXPECT<<EOF
+	$EXPECT<<EOF
 log_user 0
 spawn $IOS logout
 expect eof
@@ -90,9 +93,13 @@ fi
 [ $DEBUG -ne 0 ] && set -x
 
 # Get the list of available distribution profiles
-REZ=`$IOS profiles:list $PROFILE_TYPE`
+REZ=`$IOS profiles --type $PROFILE_TYPE`
 #Skip the first three lines (ascii table headers), separate fields by |, trim leading and trailing whitespace for each field, and print out the profile name.
-PROFILES=`echo "$REZ" | $AWK 'BEGIN { FS = "|" } { if (NR>3) { for (i=1;i<=NF;i++) {gsub (/^ */,"",$i); gsub (/ *$/,"",$i) }  print $2 } } END { }'`
+#'NR>0' in the awk statement below is used to skip '0' lines. We do this instead of
+#skipping the header as mentioned above, because the raw listing contains profiles which
+#are not "Active" and we only want the active profiles, so we pre-filter with grep, which
+#also removes the header lines.
+PROFILES=`echo "$REZ" | $GREP "Active" | $AWK 'BEGIN { FS = "|" } { if (NR>0) { for (i=1;i<=NF;i++) {gsub (/^ */,"",$i); gsub (/ *$/,"",$i) }  print $2 } } END { }'`
 
 # Get the index of the desired target profile (into TARGET)
 INDEX=0
@@ -110,7 +117,7 @@ if [ $TARGET -eq 0 ]; then
 fi
 
 # Download the desired profile
-REZ=`echo "$TARGET" | $IOS profiles:download $PROFILE_TYPE`
+REZ=`echo "$TARGET" | $IOS profiles:download --type $PROFILE_TYPE`
 PROFILE_FILE=`echo $REZ | $SED 's|.*'\''\(.*\)'\''.*|\1|g'`
 
 # Logout, if we logged in

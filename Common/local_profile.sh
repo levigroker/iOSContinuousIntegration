@@ -27,10 +27,6 @@ export DEBUG
 set -eu
 [ $DEBUG -ne 0 ] && set -x
 
-
-PROFILE_HOME="$HOME/Library/MobileDevice/Provisioning Profiles/"
-cd "$PROFILE_HOME"
-
 # ----------------------
 # Configuration Section
 # ----------------------
