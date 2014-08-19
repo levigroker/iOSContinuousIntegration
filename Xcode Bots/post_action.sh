@@ -105,7 +105,7 @@ if [ "$LAST_SUCCESS_REV" = "" ]; then
 fi
 [ "$LAST_SUCCESS_REV" = "" ] && echo "Could not determine last successful build revision" || echo "Last build success revision: $LAST_SUCCESS_REV"
 cd "$PROJECT_DIR"
-[ "$LAST_SUCCESS_REV" = "" ] && RELEASE_NOTES=$($GIT_B show -s --format="$GIT_LOG_FORMAT") || RELEASE_NOTES=$($GIT_B log --pretty="$GIT_LOG_FORMAT" $LAST_SUCCESS_REV..HEAD)
+[ "$LAST_SUCCESS_REV" = "" ] && RELEASE_NOTES=$($GIT_B show -s --format="$GIT_LOG_FORMAT" | $TAIL_B -r) || RELEASE_NOTES=$($GIT_B log --pretty="$GIT_LOG_FORMAT" $LAST_SUCCESS_REV..HEAD  | $TAIL_B -r)
 [ "$RELEASE_NOTES" = "" ] && RELEASE_NOTES="(no release notes)"
 echo "Release Notes:\n$RELEASE_NOTES"
 
