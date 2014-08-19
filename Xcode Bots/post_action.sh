@@ -19,15 +19,17 @@
 # TF_DIST_LIST="Internal,Foo"
 # TF_API_TOKEN="actualtestflightapitoken"
 # TF_TEAM_TOKEN="actualtestflightteamtoken"
+# CL_API_KEY="actualcrashlytlicsapikey"
+# CL_BUILD_SECRET="actualcrashlytlicsbuildsecret"
 # source "${SRCROOT}/CI/post_action.sh"
 #
 # You'll need to create a 'CI' directory in your SRCROOT which is home to this and other
 # related scripts, such as configure.sh, pre_action.sh, local_profile.sh, testflight.sh,
-# etc.
+# crashlytics.sh, etc.
 #
 # Levi Brown
 # mailto:levigroker@gmail.com
-# June 30, 2014
+# August 14, 2014
 # https://github.com/levigroker/iOSContinuousIntegration
 ##
 
@@ -61,6 +63,13 @@ TF_UPLOAD=${TF_UPLOAD:-1}
 # TestFlight upload configuration
 export TF_API_TOKEN=${TF_API_TOKEN:-""}
 export TF_TEAM_TOKEN=${TF_TEAM_TOKEN:-""}
+
+# You can prevent the build from uploading to Crashlytics by specifying CL_UPLOAD=0
+CL_UPLOAD=${CL_UPLOAD:-1}
+# Crashlytics upload configuration
+export CL_API_KEY=${CL_API_KEY:-""}
+export CL_BUILD_SECRET=${CL_BUILD_SECRET:-""}
+
 [ $DEBUG -ne 0 ] && set -x
 
 # -------------------------
@@ -135,6 +144,12 @@ echo "dSYM file ready for upload"
 if [ $TF_UPLOAD -ne 0 ]; then
 	echo "Distributing to TestFlight list(s): $TF_DIST_LIST"
 	. "$CI_DIR/$TEST_FLIGHT_UPLOAD_SCRIPT" "$IPA" "$DSYM_ZIP" "$RELEASE_NOTES" "$TF_DIST_LIST"
+fi
+
+# Upload to Crashlytics
+if [ $CL_UPLOAD -ne 0 ]; then
+	echo "Submitting IPA to Crashlytics"
+	. "$CI_DIR/$CRASHLYTICS_UPLOAD_SCRIPT" "$IPA" "$RELEASE_NOTES"
 fi
 
 # Update our last success rev hash

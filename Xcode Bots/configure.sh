@@ -75,6 +75,8 @@ export GIT_LOG_FORMAT="%ai %an: %s"
 
 # Script relative to $CI_DIR which will upload the built IPA to TestFlight
 export TEST_FLIGHT_UPLOAD_SCRIPT="testflight.sh"
+# Script relative to $CI_DIR which will upload the built IPA to Crashlytics
+export CRASHLYTICS_UPLOAD_SCRIPT="crashlytics.sh"
 # Script relative to $CI_DIR which will fetch the provisioning profile
 # (takes <profile_type>(development|distribution) and <profile_name> as arguments)
 # returns the name of the profile file which should be present in the current directory
