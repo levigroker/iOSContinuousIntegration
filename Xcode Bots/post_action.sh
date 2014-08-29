@@ -82,20 +82,24 @@ export CL_BUILD_SECRET=${CL_BUILD_SECRET:-""}
 
 # Validate the configuration
 
-if [ "$SIGNING_IDENTITY" = "" ]; then
-	fail "Empty signing identity specified. Please export SIGNING_IDENTITY with the name of the signing identity to use."
+if [ $TF_UPLOAD -ne 0 -o $CL_UPLOAD -ne 0 ]; then
+	if [ "$SIGNING_IDENTITY" = "" ]; then
+		fail "Empty signing identity specified. Please export SIGNING_IDENTITY with the name of the signing identity to use."
+	fi
 fi
 
-# Prevent sensitive info from going to the console in debug mode.
-[ $DEBUG -ne 0 ] && set +x
-if [ "$TF_API_TOKEN" = "" ]; then
-	fail "Empty TestFlight API token specified. Please export TF_API_TOKEN with the needed API token."
-fi
+if [ $TF_UPLOAD -ne 0 ]; then
+	# Prevent sensitive info from going to the console in debug mode.
+	[ $DEBUG -ne 0 ] && set +x
+	if [ "$TF_API_TOKEN" = "" ]; then
+		fail "Empty TestFlight API token specified. Please export TF_API_TOKEN with the needed API token."
+	fi
 
-if [ "$TF_TEAM_TOKEN" = "" ]; then
-	fail "Empty TestFlight Team token specified. Please export TF_API_TOKEN with the needed team token."
+	if [ "$TF_TEAM_TOKEN" = "" ]; then
+		fail "Empty TestFlight Team token specified. Please export TF_API_TOKEN with the needed team token."
+	fi
+	[ $DEBUG -ne 0 ] && set -x
 fi
-[ $DEBUG -ne 0 ] && set -x
 
 ## Main
 
@@ -113,47 +117,49 @@ cd "$PROJECT_DIR"
 [ "$RELEASE_NOTES" = "" ] && RELEASE_NOTES="(no release notes)"
 echo "Release Notes:\n$RELEASE_NOTES"
 
-# Set up our output directory
-OUTPUT="$PROJECT_DIR/output"
-$RM_B -rf "$OUTPUT"
-$MKDIR_B -p "$OUTPUT"
+if [ $TF_UPLOAD -ne 0 -o $CL_UPLOAD -ne 0 ]; then
+	# Set up our output directory
+	OUTPUT="$PROJECT_DIR/output"
+	$RM_B -rf "$OUTPUT"
+	$MKDIR_B -p "$OUTPUT"
 
-# Copy the latest build the bot just created to our output directory
-echo "Copying latest Archive from \"$ARCHIVE_PATH\" to \"$OUTPUT\"..."
-$CP_B -Rp "$ARCHIVE_PATH" "$OUTPUT"
+	# Copy the latest build the bot just created to our output directory
+	echo "Copying latest Archive from \"$ARCHIVE_PATH\" to \"$OUTPUT\"..."
+	$CP_B -Rp "$ARCHIVE_PATH" "$OUTPUT"
 
-# The actual provisioning file found in PROFILE_HOME
-PROFILE_FILE=${PROFILE_FILE:-$($LS_B "$PROFILE_HOME" | $HEAD_B -1)}
-echo "Profile file: \"$PROFILE_FILE\""
-# The full path to the provisioning profile to bundle in the app
-BUNDLE_PROFILE="$PROFILE_BOT_LOC/$PROFILE_FILE"
-echo "Profile to bundle: \"$BUNDLE_PROFILE\""
+	# The actual provisioning file found in PROFILE_HOME
+	PROFILE_FILE=${PROFILE_FILE:-$($LS_B "$PROFILE_HOME" | $HEAD_B -1)}
+	echo "Profile file: \"$PROFILE_FILE\""
+	# The full path to the provisioning profile to bundle in the app
+	BUNDLE_PROFILE="$PROFILE_BOT_LOC/$PROFILE_FILE"
+	echo "Profile to bundle: \"$BUNDLE_PROFILE\""
 
-DYSM_NAME="$PRODUCT_NAME.app.dSYM"
-DSYM="$OUTPUT/Archive.xcarchive/dSYMs/$DYSM_NAME"
-APP="$OUTPUT/Archive.xcarchive/Products/Applications/$PRODUCT_NAME.app"
-IPA="$OUTPUT/$PRODUCT_NAME.ipa"
+	DYSM_NAME="$PRODUCT_NAME.app.dSYM"
+	DSYM="$OUTPUT/Archive.xcarchive/dSYMs/$DYSM_NAME"
+	APP="$OUTPUT/Archive.xcarchive/Products/Applications/$PRODUCT_NAME.app"
+	IPA="$OUTPUT/$PRODUCT_NAME.ipa"
 
-echo "Creating \"$IPA\"..."
-$XCRUN_B -sdk iphoneos PackageApplication -v "$APP" -o "$IPA" --sign "$SIGNING_IDENTITY" --embed "$BUNDLE_PROFILE"
-echo "Built \"$IPA\""
+	echo "Creating \"$IPA\"..."
+	$XCRUN_B -sdk iphoneos PackageApplication -v "$APP" -o "$IPA" --sign "$SIGNING_IDENTITY" --embed "$BUNDLE_PROFILE"
+	echo "Built \"$IPA\""
 
-# Zip up the dSYM file for uploading to TestFlight
-DSYM_ZIP="$OUTPUT/$DYSM_NAME.zip"
-echo "Zipping dSYM \"$DSYM\" to \"$DSYM_ZIP\"..."
-$ZIP_B -r -y "$DSYM_ZIP" "$DSYM"
-echo "dSYM file ready for upload"
+	# Zip up the dSYM file for uploading to TestFlight
+	DSYM_ZIP="$OUTPUT/$DYSM_NAME.zip"
+	echo "Zipping dSYM \"$DSYM\" to \"$DSYM_ZIP\"..."
+	$ZIP_B -r -y "$DSYM_ZIP" "$DSYM"
+	echo "dSYM file ready for upload"
 
-# Upload to TestFlight
-if [ $TF_UPLOAD -ne 0 ]; then
-	echo "Distributing to TestFlight list(s): $TF_DIST_LIST"
-	. "$CI_DIR/$TEST_FLIGHT_UPLOAD_SCRIPT" "$IPA" "$DSYM_ZIP" "$RELEASE_NOTES" "$TF_DIST_LIST"
-fi
+	# Upload to TestFlight
+	if [ $TF_UPLOAD -ne 0 ]; then
+		echo "Distributing to TestFlight list(s): $TF_DIST_LIST"
+		. "$CI_DIR/$TEST_FLIGHT_UPLOAD_SCRIPT" "$IPA" "$DSYM_ZIP" "$RELEASE_NOTES" "$TF_DIST_LIST"
+	fi
 
-# Upload to Crashlytics
-if [ $CL_UPLOAD -ne 0 ]; then
-	echo "Submitting IPA to Crashlytics"
-	. "$CI_DIR/$CRASHLYTICS_UPLOAD_SCRIPT" "$IPA" "$RELEASE_NOTES"
+	# Upload to Crashlytics
+	if [ $CL_UPLOAD -ne 0 ]; then
+		echo "Submitting IPA to Crashlytics"
+		. "$CI_DIR/$CRASHLYTICS_UPLOAD_SCRIPT" "$IPA" "$RELEASE_NOTES"
+	fi
 fi
 
 # Update our last success rev hash
