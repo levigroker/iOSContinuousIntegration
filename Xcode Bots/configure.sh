@@ -59,8 +59,15 @@ export BRANCH=${BRANCH:-$($GIT_B describe --contains --all HEAD | $SED_B 's|^.*/
 
 ## Paths
 # The path containing this script and related scripts for Continuous Integration
-export CI_DIR="$PROJECT_DIR/CI"
+export CI_DIR=${CI_DIR:-"$PROJECT_DIR/CI"}
 echo "CI directory: \"$CI_DIR\""
+# The project specific Continuous Integration path
+export PROJECT_CI_DIR=${PROJECT_CI_DIR:-"$PROJECT_DIR/CI"}
+echo "Project CI directory: \"$PROJECT_CI_DIR\""
+# The directory containing the provisioning profile file(s) in the repository
+export PROFILE_DIR=${PROFILE_DIR:-"$PROJECT_CI_DIR"}
+echo "Profile directory: \"$PROFILE_DIR\""
+
 # The working location where we will stage our provisioning profile
 export PROFILE_HOME="$PROJECT_DIR/profile"
 # The location where Xcode bots look for provisioning profiles

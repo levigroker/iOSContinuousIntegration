@@ -51,7 +51,7 @@ set -eu
 echo "Starting post action script..."
 
 # Common configuration
-source "$SRCROOT/CI/configure.sh"
+source "$CI_DIR/configure.sh"
 
 # ----------------------
 # Configuration Section
