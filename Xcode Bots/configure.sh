@@ -89,7 +89,11 @@ export PROFILE_TYPE="distribution"
 # The current Build Number (or Integration Number)
 # Hack-ish, but it's what we've got.
 # See: http://stackoverflow.com/questions/23875979/register-for-messages-from-collabd-like-xcsbuildservice-to-receive-xcode-bots-in
-export BUILD_NUMBER=${BUILD_NUMBER:-$($GREP_B -r 'integration =' /Library/Server/Xcode/Logs/xcsbuildd.log | $TAIL_B -1 | $SED_B -E 's|.* ([0-9]+);|\1|')}
-echo "Integration number: \"$BUILD_NUMBER\""
+export INTEGRATION_NUMBER=$($GREP_B -r 'integration =' /Library/Server/Xcode/Logs/xcsbuildd.log | $TAIL_B -1 | $SED_B -E 's|.* ([0-9]+);|\1|')
+echo "Integration number: \"$INTEGRATION_NUMBER\""
+export BASE_BUILD_NUMBER=${BASE_BUILD_NUMBER:-0}
+echo "Base build number: \"$BASE_BUILD_NUMBER\""
+export BUILD_NUMBER=${BUILD_NUMBER:-$((BASE_BUILD_NUMBER + INTEGRATION_NUMBER))}
+echo "Build number: \"$BUILD_NUMBER\""
 
 echo "Done with configuration script!"
