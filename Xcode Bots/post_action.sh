@@ -60,16 +60,16 @@ SIGNING_IDENTITY=${SIGNING_IDENTITY:-""}
 
 ## TestFlight distribution lists
 export TF_DIST_LIST=${TF_DIST_LIST:-""}
-# You can prevent the build from uploading to TestFlight by specifying TF_UPLOAD=0
-TF_UPLOAD=${TF_UPLOAD:-1}
+# You can enable uploading the build to TestFlight by specifying TF_UPLOAD=1
+TF_UPLOAD=${TF_UPLOAD:-0}
 # Prevent sensitive info from going to the console in debug mode.
 [ $DEBUG -ne 0 ] && set +x
 # TestFlight upload configuration
 export TF_API_TOKEN=${TF_API_TOKEN:-""}
 export TF_TEAM_TOKEN=${TF_TEAM_TOKEN:-""}
 
-# You can prevent the build from uploading to Crashlytics by specifying CL_UPLOAD=0
-CL_UPLOAD=${CL_UPLOAD:-1}
+# You can enable uploading the build to Crashlytics by specifying CL_UPLOAD=1
+CL_UPLOAD=${CL_UPLOAD:-0}
 # Crashlytics upload configuration
 export CL_API_KEY=${CL_API_KEY:-""}
 export CL_BUILD_SECRET=${CL_BUILD_SECRET:-""}
