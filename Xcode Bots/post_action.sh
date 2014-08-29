@@ -15,17 +15,21 @@
 # on the Archive phase. Some simple configuration is needed, so in the Run Script specify
 # /bin/bash as the shell, then use something like this to initiate the script:
 #
+# TF_UPLOAD=1
 # SIGNING_IDENTITY="iPhone Distribution: ProGroker LLC"
 # TF_DIST_LIST="Internal,Foo"
 # TF_API_TOKEN="actualtestflightapitoken"
 # TF_TEAM_TOKEN="actualtestflightteamtoken"
+# CL_UPLOAD=1
 # CL_API_KEY="actualcrashlytlicsapikey"
 # CL_BUILD_SECRET="actualcrashlytlicsbuildsecret"
-# source "${SRCROOT}/CI/post_action.sh"
+# CI_DIR="${PROJECT_DIR}/CI"
+# source "${CI_DIR}/post_action.sh"
 #
-# You'll need to create a 'CI' directory in your SRCROOT which is home to this and other
-# related scripts, such as configure.sh, pre_action.sh, local_profile.sh, testflight.sh,
-# crashlytics.sh, etc.
+
+# Prior to calling, you'll need to export 'CI_DIR' as the directory which is home to this
+# and other related scripts, such as configure.sh, pre_action.sh, local_profile.sh,
+# testflight.sh, crashlytics.sh, etc.
 #
 # Levi Brown
 # mailto:levigroker@gmail.com

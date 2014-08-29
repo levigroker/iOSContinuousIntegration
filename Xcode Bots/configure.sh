@@ -2,9 +2,9 @@
 #
 # Common configuration for pre and post build scripts
 #
-# You'll need to create a 'CI' directory in your SRCROOT which is home to this and other
-# related scripts, such as pre_action.sh, post_action.sh, local_profile.sh, testflight.sh,
-# etc.
+# Prior to calling, you'll need to export 'CI_DIR' as the directory which is home to this
+# and other related scripts, such as configure.sh, pre_action.sh, local_profile.sh,
+# testflight.sh, crashlytics.sh, etc.
 #
 # Levi Brown
 # mailto:levigroker@gmail.com

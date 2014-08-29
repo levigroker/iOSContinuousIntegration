@@ -12,11 +12,12 @@
 # /bin/bash as the shell, then use something like this to initiate the script:
 #
 # PROFILE_NAME='Awesomesauce AdHoc'
-# source "${SRCROOT}/CI/pre_action.sh"
+# CI_DIR="${PROJECT_DIR}/CI"
+# source "${CI_DIR}/pre_action.sh"
 #
-# You'll need to create a 'CI' directory in your SRCROOT which is home to this and other
-# related scripts, such as configure.sh, post_action.sh, local_profile.sh, testflight.sh,
-# etc.
+# Prior to calling, you'll need to export 'CI_DIR' as the directory which is home to this
+# and other related scripts, such as configure.sh, pre_action.sh, local_profile.sh,
+# testflight.sh, crashlytics.sh, etc.
 #
 # Levi Brown
 # mailto:levigroker@gmail.com
