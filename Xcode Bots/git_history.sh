@@ -48,6 +48,7 @@ export GIT_LOG_FORMAT=${GIT_LOG_FORMAT:-"%ai %an: %B"}
 
 # Fully qualified binaries (_B suffix to prevent collisions)
 GIT_B="/usr/bin/git"
+SED_B="/usr/bin/sed"
 
 START_REV=${1:-""}
 END_REV=${2:-""}
@@ -60,10 +61,15 @@ if [ "$START_REV" = "" ]; then
 	usage "Empty starting commit hash specified."
 fi
 
-if [ "$END_REV" = "" ]; then
+if [ "$END_REV" = "" -o "$END_REV" = "HEAD" ]; then
 	END_REV=$($GIT_B rev-parse --verify HEAD)
 fi
 
 RELEASE_NOTES=$($GIT_B log --notes --reverse --pretty="$GIT_LOG_FORMAT" $START_REV..$END_REV)
-[ "$RELEASE_NOTES" != "" ] && RELEASE_NOTES="Commit history from hash \"$START_REV\" to hash \"$END_REV\" (inclusive)"$'\n'"---"$'\n'"$RELEASE_NOTES"
+
+if [[ "$RELEASE_NOTES" != "" ]]; then
+	BRANCH=$($GIT_B describe --contains --all HEAD | $SED_B 's|^.*/||')
+	HEADER="Commit History"$'\n'"---"$'\n'"- From Revision: \"$START_REV\""$'\n'"- To Revision:   \"$END_REV\""$'\n'"- Branch:        \"$BRANCH\""$'\n'"---"$'\n'
+	RELEASE_NOTES="$HEADER"$'\n'"$RELEASE_NOTES"
+fi
 echo "$RELEASE_NOTES"
