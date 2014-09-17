@@ -17,6 +17,7 @@ function fail()
     echo "Failed: $@" >&2
     exit 1
 }
+
 DEBUG=${DEBUG:-1}
 export DEBUG
 
@@ -77,8 +78,10 @@ echo "Xcode bot provisioning profile directory: \"$PROFILE_BOT_LOC\""
 export GIT_REV_FILE="/Library/Server/Xcode/Data/$SCHEME_NAME.last_success_git_hash.txt"
 echo "Git latest rev file: \"$GIT_REV_FILE\""
 
+# Script relative to $CI_DIR which will return the release notes for this build
+export GIT_HISTORY_SCRIPT="git_history.sh"
 # Release note formatting (See 'git help log' for format details)
-export GIT_LOG_FORMAT="%ai %an: %s"
+export GIT_LOG_FORMAT="%ai %an: %B"
 
 # Script relative to $CI_DIR which will upload the built IPA to TestFlight
 export TEST_FLIGHT_UPLOAD_SCRIPT="testflight.sh"
