@@ -114,9 +114,11 @@ if [ "$LAST_SUCCESS_REV" = "" ]; then
 fi
 [ "$LAST_SUCCESS_REV" = "" ] && echo "Could not determine last successful build revision" || echo "Last build success revision: $LAST_SUCCESS_REV"
 cd "$PROJECT_DIR"
-[ "$LAST_SUCCESS_REV" = "" ] && RELEASE_NOTES=`. "$CI_DIR/$GIT_HISTORY_SCRIPT" "$LAST_SUCCESS_REV"`
+# If we didn't find the last successful revision, then just get the notes since checkout,
+# otherwise, use the GIT_HISTORY_SCRIPT to get all notes from that rev to HEAD.
+[ "$LAST_SUCCESS_REV" = "" ] && RELEASE_NOTES=$($GIT_B show -s --format="$GIT_LOG_FORMAT" | $TAIL_B -r) || RELEASE_NOTES=$("$CI_DIR/$GIT_HISTORY_SCRIPT" "$LAST_SUCCESS_REV")
 [ "$RELEASE_NOTES" = "" ] && RELEASE_NOTES="(no release notes)"
-echo "Release Notes:\n$RELEASE_NOTES"
+echo -e "Release Notes:\n$RELEASE_NOTES"
 
 if [ $TF_UPLOAD -ne 0 -o $CL_UPLOAD -ne 0 ]; then
 	# Set up our output directory
