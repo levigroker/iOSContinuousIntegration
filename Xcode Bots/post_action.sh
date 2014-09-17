@@ -42,6 +42,7 @@ function fail()
     echo "Failed: $@" >&2
     exit 1
 }
+
 DEBUG=${DEBUG:-1}
 export DEBUG
 
