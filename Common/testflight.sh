@@ -41,8 +41,8 @@ TF_API_TOKEN=${TF_API_TOKEN:-""}
 TF_TEAM_TOKEN=${TF_TEAM_TOKEN:-""}
 
 # Fully qualified binaries
-GREP="/usr/bin/grep"
-CURL="/usr/bin/curl"
+GREP_B="/usr/bin/grep"
+CURL_B="/usr/bin/curl"
 
 if [ "$TF_API_TOKEN" = "" ]; then
 	usage "Empty TestFlight API token specified. Please export TF_API_TOKEN with the needed API token."
@@ -70,14 +70,14 @@ fi
 # Start: Prevent sensitive info from going to the console in debug mode.
 [ $DEBUG -ne 0 ] && set +x
 if [ "$DIST" = "" ]; then
-	REZ=`$CURL "$TF_API_URL" -F file="@$IPA_FILE" -F dsym="@$DSYM_ZIP" -F api_token="$TF_API_TOKEN" -F team_token="$TF_TEAM_TOKEN" -F notes="$NOTES" -F notify=True || fail "Upload to TestFlight failed."`
+	REZ=`$CURL_B "$TF_API_URL" -F file="@$IPA_FILE" -F dsym="@$DSYM_ZIP" -F api_token="$TF_API_TOKEN" -F team_token="$TF_TEAM_TOKEN" -F notes="$NOTES" -F notify=True || fail "Upload to TestFlight failed."`
 else
-	REZ=`$CURL "$TF_API_URL" -F file="@$IPA_FILE" -F dsym="@$DSYM_ZIP" -F api_token="$TF_API_TOKEN" -F team_token="$TF_TEAM_TOKEN" -F notes="$NOTES" -F notify=True -F distribution_lists="$DIST" || fail "Upload to TestFlight failed."`
+	REZ=`$CURL_B "$TF_API_URL" -F file="@$IPA_FILE" -F dsym="@$DSYM_ZIP" -F api_token="$TF_API_TOKEN" -F team_token="$TF_TEAM_TOKEN" -F notes="$NOTES" -F notify=True -F distribution_lists="$DIST" || fail "Upload to TestFlight failed."`
 fi
 # End: Prevent sensitive info from going to the console
 [ $DEBUG -ne 0 ] && set -x
 
-KEY=`echo "$REZ" | $GREP install_url`
+KEY=`echo "$REZ" | $GREP_B install_url`
 if [ "$KEY" == "" ]; then
 	fail "$REZ"
 else

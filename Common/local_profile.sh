@@ -47,7 +47,7 @@ PROFILE_DIR=${PROFILE_DIR:-"."}
 DEBUG=${DEBUG:-0}
 
 # Fully qualified binaries
-CP="/bin/cp"
+CP_B="/bin/cp"
 
 # Sanity check input
 if [ "$PROFILE_TYPE" != "distribution" -a "$PROFILE_TYPE" != "development" ]; then
@@ -73,7 +73,7 @@ if [ "$PROFILE_FILE" = "" ]; then
 	fail "Unsupported profile \"$PROFILE_NAME\""
 fi
 
-`$CP "$PROFILE_DIR/$PROFILE_FILE" "$PROFILE_DEST"`
+`$CP_B "$PROFILE_DIR/$PROFILE_FILE" "$PROFILE_DEST"`
 
 # Return the profile file name
 echo "$PROFILE_FILE"
