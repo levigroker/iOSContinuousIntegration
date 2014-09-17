@@ -11,9 +11,9 @@
 
 function usage()
 {
-	[ "$@" = "" ] || echo "$@"
-	echo "Usage:"
-	echo "$0 <ipa file> [<release_notes>]"
+	[[ "$@" = "" ]] || echo "$@" >&2
+	echo "Usage:" >&2
+	echo "$0 <ipa file> [<release_notes>]" >&2
     exit 1
 }
 

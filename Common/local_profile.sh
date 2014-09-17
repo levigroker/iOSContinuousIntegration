@@ -10,9 +10,9 @@
 
 function usage()
 {
-	[ "$@" = "" ] || echo "$@"
-	echo "Usage:"
-	echo "$0 distribution|development <profile_name> [<destination_directory>]"
+	[[ "$@" = "" ]] || echo "$@" >&2
+	echo "Usage:" >&2
+	echo "$0 distribution|development <profile_name> [<destination_directory>]" >&2
     exit 1
 }
 
@@ -21,6 +21,7 @@ function fail()
     echo "Failed: $@" >&2
     exit 1
 }
+
 DEBUG=${DEBUG:-0}
 export DEBUG
 
