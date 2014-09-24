@@ -72,10 +72,10 @@ echo "Profile directory: \"$PROFILE_DIR\""
 # The working location where we will stage our provisioning profile
 export PROFILE_HOME="$PROJECT_DIR/profile"
 # The location where Xcode bots look for provisioning profiles
-export PROFILE_BOT_LOC="/Library/Server/Xcode/Data/ProvisioningProfiles"
+export PROFILE_BOT_LOC="/Library/Developer/XcodeServer/ProvisioningProfiles"
 echo "Xcode bot provisioning profile directory: \"$PROFILE_BOT_LOC\""
 # The full path to the file we will use to store the git hash of the last successful build
-export GIT_REV_FILE="/Library/Server/Xcode/Data/$SCHEME_NAME.last_success_git_hash.txt"
+export GIT_REV_FILE="/Library/Developer/XcodeServer/Integrations/$SCHEME_NAME.last_success_git_hash.txt"
 echo "Git latest rev file: \"$GIT_REV_FILE\""
 
 # Script relative to $CI_DIR which will return the release notes for this build
@@ -96,10 +96,8 @@ export PROFILE_ACQUISITION_SCRIPT="local_profile.sh"
 # The type of profile we will fetch with the PROFILE_ACQUISITION_SCRIPT. Should be either "development" or "distribution".
 export PROFILE_TYPE="distribution"
 
-# The current Build Number (or Integration Number)
-# Hack-ish, but it's what we've got.
-# See: http://stackoverflow.com/questions/23875979/register-for-messages-from-collabd-like-xcsbuildservice-to-receive-xcode-bots-in
-export INTEGRATION_NUMBER=$($GREP_B -r 'integration =' /Library/Server/Xcode/Logs/xcsbuildd.log | $TAIL_B -1 | $SED_B -E 's|.* ([0-9]+);|\1|')
+# The current Integration Number
+export INTEGRATION_NUMBER=$XCS_INTEGRATION_NUMBER
 echo "Integration number: \"$INTEGRATION_NUMBER\""
 export BASE_BUILD_NUMBER=${BASE_BUILD_NUMBER:-0}
 echo "Base build number: \"$BASE_BUILD_NUMBER\""
