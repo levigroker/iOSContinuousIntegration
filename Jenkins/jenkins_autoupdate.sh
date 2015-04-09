@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 #
 # jenkins_autoupdate.sh
 # A script to automatically update the Jenkins web application if a new version is
@@ -22,6 +22,7 @@ function fail()
     echo "Failed: $@" >&2
     exit 1
 }
+
 DEBUG=${DEBUG:-0}
 export DEBUG
 
