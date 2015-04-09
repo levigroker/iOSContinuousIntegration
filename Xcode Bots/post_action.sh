@@ -23,6 +23,7 @@
 # CL_UPLOAD=1
 # CL_API_KEY="actualcrashlytlicsapikey"
 # CL_BUILD_SECRET="actualcrashlytlicsbuildsecret"
+# CL_DIST_LIST="Internal,Foo"
 # CI_DIR="${PROJECT_DIR}/CI"
 # source "${CI_DIR}/post_action.sh"
 #
@@ -74,6 +75,8 @@ CL_UPLOAD=${CL_UPLOAD:-0}
 # Crashlytics upload configuration
 export CL_API_KEY=${CL_API_KEY:-""}
 export CL_BUILD_SECRET=${CL_BUILD_SECRET:-""}
+## Crashlytics Beta distribution lists
+export CL_DIST_LIST=${CL_DIST_LIST:-""}
 
 [ $DEBUG -ne 0 ] && set -x
 
@@ -98,6 +101,19 @@ if [ $TF_UPLOAD -ne 0 ]; then
 
 	if [ "$TF_TEAM_TOKEN" = "" ]; then
 		fail "Empty TestFlight Team token specified. Please export TF_API_TOKEN with the needed team token."
+	fi
+	[ $DEBUG -ne 0 ] && set -x
+fi
+
+if [ $CL_UPLOAD -ne 0 ]; then
+	# Prevent sensitive info from going to the console in debug mode.
+	[ $DEBUG -ne 0 ] && set +x
+	if [ "$CL_API_KEY" = "" ]; then
+		fail "Empty Crashlytics Beta API key specified. Please export CL_API_KEY with the needed API key."
+	fi
+
+	if [ "$CL_BUILD_SECRET" = "" ]; then
+		fail "Empty Crashlytics Beta build secret specified. Please export CL_BUILD_SECRET with the needed build secret."
 	fi
 	[ $DEBUG -ne 0 ] && set -x
 fi

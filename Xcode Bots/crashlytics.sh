@@ -35,10 +35,12 @@ NOTES=${2:-"Automated build."}
 FIND_B="/usr/bin/find"
 MKTEMP_B="/usr/bin/mktemp"
 RM_B="/bin/rm"
+TAIL_B="/usr/bin/tail"
+BASENAME_B="/usr/bin/basename"
 
 #Find the first Crashlytics.framework
 CRASHLYTICS_FWK="Crashlytics.framework" 
-CRASHLYTICS_FWK_PATH=$($FIND_B . -name "$CRASHLYTICS_FWK" | tail -1)
+CRASHLYTICS_FWK_PATH=$($FIND_B . -name "$CRASHLYTICS_FWK" | $TAIL_B -1)
 if [ "$CRASHLYTICS_FWK_PATH" = "" ]; then
 	fail "Could not locate $CRASHLYTICS_FWK in current project subdirectory."
 fi
@@ -48,6 +50,7 @@ SUBMIT_B="$CRASHLYTICS_FWK_PATH/submit"
 [ $DEBUG -ne 0 ] && set +x
 CL_API_KEY=${CL_API_KEY:-""}
 CL_BUILD_SECRET=${CL_BUILD_SECRET:-""}
+CL_DIST_LIST=${CL_DIST_LIST:-""}
 
 if [ "$CL_API_KEY" = "" ]; then
 	usage "Empty API key specified. Please export CL_API_KEY with the needed API key."
@@ -68,8 +71,8 @@ fi
 
 #Since Crashlytics submit needs a file for the release notes we need to write the notes
 #to a temp file...
-BASENAME=`basename $0`
-NOTES_PATH=`mktemp -q "/tmp/$BASENAME.XXXXXX"`
+BASENAME=`$BASENAME_B $0`
+NOTES_PATH=`$MKTEMP_B -q "/tmp/$BASENAME.XXXXXX"`
 if [ $? -ne 0 ]; then
 	fail "Can not create temp file: \"$NOTES_PATH\""
 fi
@@ -78,7 +81,7 @@ echo "$NOTES" > "$NOTES_PATH"
 # Start: Prevent sensitive info from going to the console in debug mode.
 [ $DEBUG -ne 0 ] && set +x
 set +e
-REZ=`"$SUBMIT_B" $CL_API_KEY $CL_BUILD_SECRET -ipaPath "$IPA_FILE" -notesPath "$NOTES_PATH"`
+REZ=`"$SUBMIT_B" $CL_API_KEY $CL_BUILD_SECRET -ipaPath "$IPA_FILE" -notesPath "$NOTES_PATH" -groupAliases "$CL_DIST_LIST" -notifications YES -debug YES`
 FAILURE=$?
 set -e
 # End: Prevent sensitive info from going to the console
