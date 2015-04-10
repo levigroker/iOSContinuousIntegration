@@ -14,6 +14,11 @@
 # Levi Brown
 # mailto:levigroker@gmail.com
 # Created March 15, 2013
+# History:
+# 1.1 April 10 2015
+#   * Added -k option to curl to ignore SSL issues (self-signed certs)
+#   * Cleaned up usage of fully qualified binaries.
+#
 # https://github.com/levigroker/iOSContinuousIntegration
 ##
 
@@ -46,33 +51,34 @@ echo "JENKINS_URL \"$JENKINS_URL\""
 [ "$JENKINS_URL" = "" ] && fail "JENKINS_URL not specified. Please export JENKINS_URL as the URL to the target Jenkins install. NOTE: JENKINS_URL is set automatically if this script is exectuted as a Jenkins Job."
 
 # Fully qualified binaries
-CURL="/usr/bin/curl"
-AWK="/usr/bin/awk"
-SED="/usr/bin/sed"
-GREP="/usr/bin/grep"
-TR="/usr/bin/tr"
-PYTHON="/usr/bin/python"
+CURL_B="/usr/bin/curl"
+SED_B="/usr/bin/sed"
+GREP_B="/usr/bin/grep"
+TR_B="/usr/bin/tr"
+PYTHON_B="/usr/bin/python"
+MKDIR_B="/bin/mkdir"
+MV_B="/bin/mv"
 
 # Get the current Jenkins version from the 'X-Jenkins' HTTP header
-JENKINS_VERSION=`$CURL -f -s --head $JENKINS_URL | $GREP "X-Jenkins:" | $TR -d '\r' | $SED 's|.*X-Jenkins:[ \t]*\([.0-9]*\)|\1|g'`
+JENKINS_VERSION=`$CURL_B -k -f -s --head $JENKINS_URL | $GREP_B "X-Jenkins:" | $TR_B -d '\r' | $SED_B 's|.*X-Jenkins:[ \t]*\([.0-9]*\)|\1|g'`
 [ $DEBUG -ne 0 ] && echo "JENKINS_VERSION: \"$JENKINS_VERSION\""
 [ "$JENKINS_VERSION" = "" ] && fail "Could not determine local Jenkins version."
 
 # Determine the most recent version
-JSON=`curl -sL $UPDATE_CENTER_URL`
-JSON=`echo "$JSON" | grep "\"connectionCheckUrl\":"`
-NEW_VERSION=`echo "$JSON" | $PYTHON -c 'import json,sys;obj=json.load(sys.stdin);print obj["core"]["version"]'`
+JSON=`$CURL_B -sL $UPDATE_CENTER_URL`
+JSON=`echo "$JSON" | $GREP_B "\"connectionCheckUrl\":"`
+NEW_VERSION=`echo "$JSON" | $PYTHON_B -c 'import json,sys;obj=json.load(sys.stdin);print obj["core"]["version"]'`
 [ $DEBUG -ne 0 ] && echo "NEW_VERSION: \"$NEW_VERSION\""
 [ "$NEW_VERSION" = "" ] && fail "Could not determine current available Jenkins version."
 
 if [ "$JENKINS_VERSION" != "$NEW_VERSION" ]; then
 	# Assume if the version strings are not equal, that we are out of date locally
-	WAR_URL=`echo "$JSON" | python -c 'import json,sys;obj=json.load(sys.stdin);print obj["core"]["url"]'`
+	WAR_URL=`echo "$JSON" | $PYTHON_B -c 'import json,sys;obj=json.load(sys.stdin);print obj["core"]["url"]'`
 	[ $DEBUG -ne 0 ] && echo "WAR_URL: \"$WAR_URL\""
 	[ "$WAR_URL" = "" ] && fail "Could not determine Jenkins war download URL."
-	$CURL -sLO "$WAR_URL"
-	mkdir -p "$WAR_DEPLOY_PATH"
-	mv jenkins.war "$WAR_DEPLOY_PATH"
+	$CURL_B -sLO "$WAR_URL"
+	$MKDIR_B -p "$WAR_DEPLOY_PATH"
+	$MV_B jenkins.war "$WAR_DEPLOY_PATH"
 	echo "Jenkins $NEW_VERSION deployed!"
 else
 	echo "No update needed; we are at $JENKINS_VERSION and the most recent version is $NEW_VERSION."
