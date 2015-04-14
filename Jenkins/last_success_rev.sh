@@ -16,7 +16,9 @@
 function fail()
 {
     echo "Failed: $@" >&2
-    exit 1
+    # We exit with success, even though we fail, so calling scripts simply get "" as the
+    # result and can do their own error handling.
+    exit 0
 }
 
 DEBUG=${DEBUG:-0}

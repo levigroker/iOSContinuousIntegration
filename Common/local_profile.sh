@@ -43,7 +43,7 @@ PROFILE_NAME=${2:-""}
 #The optional destination directory for the resulting mobileprovision file
 PROFILE_DEST=${3:-"."}
 #The directory to find the provisioning profile file(s)
-PROFILE_DIR=${PROFILE_DIR:-"."}
+PROFILE_DIR=${PROFILE_DIR:-"$XC_WORKSPACE_DIR/CI"}
 DEBUG=${DEBUG:-0}
 
 # Fully qualified binaries
