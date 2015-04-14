@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+A webapp.plist to configure and control an instance of Apache Tomcat via webappctl.
+
+This file should be linked into the /Library/Server/Web/Config/apache2/webapps/ directory.
+This assumes Tomcat is "based" in /Library/Tomcat.
+
+For further details on setup and configuration, please see the repository.
+See man pages for webapp.plist(5) and webappctl(8) for information about webapp.plist
+
+Levi Brown
+mailto:levigroker@gmail.com
+April 7, 2015
+Version 1.0
+https://github.com/levigroker/iOSContinuousIntegration
+-->
+
+<plist version="1.0">
+<dict>
+	<key>preflightCommand</key>
+	<string>/Library/Tomcat/tomcat_webapp_setup.sh</string>
+	<key>includeFiles</key>
+	<array>		<!-- Include files are activated in virtual host when webapp is started -->
+		<string>/Library/Tomcat/tomcat_apache2.conf</string>
+	</array>
+	<key>launchKeys</key>
+	<array>		<!-- Launchd plists in /Applications/Server.app/Contents/ServerRoot/System/Library/LaunchDaemons are loaded when webapp is started -->
+		<string>org.apache.tomcat</string>
+	</array>
+	<key>name</key>
+	<string>org.apache.tomcat</string>
+	<key>displayName</key>		<!-- Name shown in Server app -->
+	<string>Tomcat</string>
+	<key>proxies</key>		<!-- ProxyPass/ProxyPassReverse directives are activated when webapp is started -->
+	<dict/>
+	<key>requiredModuleNames</key>
+	<array/>
+	<key>installationIndicatorFilePath</key>	<!-- The presence of this file indicates web app is installed -->
+	<string>/Library/Tomcat/Home/bin/catalina.sh</string>
+	<key>sslPolicy</key>	<!-- Determines webapp SSL behavior -->
+	<integer>0</integer>	<!-- 0: default, UseSSLWhenEnabled -->
+			<!-- 1:	UseSSLAlways -->
+			<!-- 2:	UseSSLOnlyWhenCertificateIsTrustable -->
+			<!-- 3:	UseSSLNever -->
+			<!-- 4:	UseSSLAndNonSSL -->
+</dict>
+</plist>

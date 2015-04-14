@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+A launchd configuration to configure and control an instance of Apache Tomcat.
+
+This assumes Tomcat is "based" in /Library/Tomcat along with the supporting tomcat_launchd.sh.
+For further details on setup and configuration, please see the repository.
+
+Levi Brown
+mailto:levigroker@gmail.com
+April 7, 2015
+Version 1.0
+https://github.com/levigroker/iOSContinuousIntegration
+-->
+<plist version="1.0">
+    <dict>
+        <key>Label</key>
+        <string>org.apache.tomcat</string>
+        <key>KeepAlive</key>
+        <true/>
+        <key>RunAtLoad</key>
+        <true/>
+        <key>ProgramArguments</key>
+        <array>
+            <string>/Library/Tomcat/tomcat_launchd.sh</string>
+        </array>
+        <key>StandardErrorPath</key>
+        <string>/Library/Tomcat/logs/launchd.stderr</string>
+        <key>StandardOutPath</key>
+        <string>/Library/Tomcat/logs/launchd.stdout</string>
+        <key>UserName</key>
+        <string>_www</string>
+        <key>ProcessType</key>
+        <string>Adaptive</string>
+    </dict>
+</plist>
