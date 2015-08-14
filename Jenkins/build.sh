@@ -176,6 +176,8 @@ export OUTPUT_DIR="$XC_WORKSPACE_DIR/output"
 export EXECUTE_TESTS=${EXECUTE_TESTS:-1}
 # Should static analysis be performed?
 export EXECUTE_STATIC_ANALIZER=${EXECUTE_STATIC_ANALIZER:-1}
+# Should Deploymate analysis be performed?
+export EXECUTE_DEPLOYMATE=${EXECUTE_DEPLOYMATE:-1}
 # Should the archive be generated?
 export EXECUTE_ARCHIVE=${EXECUTE_ARCHIVE:-1}
 
@@ -202,6 +204,10 @@ export CL_BUILD_SECRET=${CL_BUILD_SECRET:-""}
 TF_UPLOAD=${TF_UPLOAD:-0}
 #TBD
 
+#Deploymate
+export DM_UNAVAILABLE_THRESHOLD=${DM_UNAVAILABLE_THRESHOLD:-1}
+export DM_DEPRECATED_THRESHOLD=${DM_DEPRECATED_THRESHOLD:-1}
+
 ## Scripts
 
 # Script relative to $CI_DIR which will return the release notes for this build
@@ -215,6 +221,8 @@ LAST_SUCCESS_REV_SCRIPT="last_success_rev.sh"
 export TEST_FLIGHT_UPLOAD_SCRIPT="testflight.sh"
 # Script relative to $CI_DIR which will upload the built IPA to Crashlytics
 export CRASHLYTICS_UPLOAD_SCRIPT="crashlytics.sh"
+# Script relative to $CI_DIR which will optionally execute the Deploymate analytics tool.
+export DEPLOYMATE_SCRIPT="deploymate.sh"
 
 # Script relative to $CI_DIR which will fetch the provisioning profile
 # (takes <profile_type>(development|distribution) and <profile_name> as arguments)
@@ -339,13 +347,21 @@ else
 	echo "Tests disabled."
 fi
 
-## Analyze
+## Static Analyzer
 if [ $EXECUTE_STATIC_ANALIZER -ne 0 ]; then
  	echo "TODO: Performing static analysis..."
  	# TODO: Analyze and output the results to Jenkins
 	# See: http://blog.manbolo.com/2014/04/15/automated-static-code-analysis-with-xcode-5.1-and-jenkins
 else
  	echo "Static analysis disabled."
+fi
+
+## Deploymate Analyzer
+if [ $EXECUTE_DEPLOYMATE -ne 0 ]; then
+ 	echo "Performing Deploymate analysis..."
+	. "$CI_DIR/$DEPLOYMATE_SCRIPT" -u $DM_UNAVAILABLE_THRESHOLD -d $DM_DEPRECATED_THRESHOLD
+else
+ 	echo "Deploymate analysis disabled."
 fi
 
 ## Archive
