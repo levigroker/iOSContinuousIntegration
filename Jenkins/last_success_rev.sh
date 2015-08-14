@@ -7,6 +7,8 @@
 # Example:
 # % ./last_success_rev.sh http://myserver.com:8080/jenkins/job/MyJob/
 #
+# See https://wiki.jenkins-ci.org/display/JENKINS/Authenticating+scripted+clients
+#
 # Levi Brown
 # mailto:levigroker@gmail.com
 # October 5, 2011
@@ -36,9 +38,9 @@ LAST_SUCCESS_URL_SUFFIX="lastSuccessfulBuild/api/xml"
 # ----------------------
 
 # Fully qualified binaries
-GREP="/usr/bin/grep"
-CURL="/usr/bin/curl"
-SED="/usr/bin/sed"
+GREP_B="/usr/bin/grep"
+CURL_B="/usr/bin/curl"
+SED_B="/usr/bin/sed"
 
 # Sanity check input
 URL=$1
@@ -56,5 +58,5 @@ fi
 
 URL="$URL$LAST_SUCCESS_URL_SUFFIX"
 
-REZ=$($CURL --silent --user $JENKINS_USER:$JENKINS_API_TOKEN $URL | $GREP "<lastBuiltRevision>" | $SED 's|.*<lastBuiltRevision>.*<SHA1>\(.*\)</SHA1>.*<branch>.*|\1|')
+REZ=$($CURL_B --insecure --silent --user "$JENKINS_USER:$JENKINS_API_TOKEN" "$URL" | $GREP_B "<lastBuiltRevision>" | $SED_B 's|.*<lastBuiltRevision>.*<SHA1>\(.*\)</SHA1>.*<branch>.*|\1|')
 echo $REZ

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # "WORKSPACE" is set by Jenkins or determined as the root of the current git repository.
 # "CI_DIR" is a directory containing this and supporting scripts. It is assumed to be a
@@ -41,8 +41,11 @@ function warn()
 function clean_dir()
 {
 	if [ "$1" != "" -a "$1" != "/" -a -d "$1" ] ; then
+		# Prevent rm failure from killing the build.
+		set +e
 		pushd "$1" && $RM_B -rf "$1" 1> /dev/null
 		popd 1> /dev/null
+		set -e
 	else
 		$MKDIR_B -p "$1"
 	fi
@@ -169,6 +172,22 @@ export OUTPUT_DIR="$XC_WORKSPACE_DIR/output"
 
 ## Configuration
 
+# Should tests be built and executed?
+export EXECUTE_TESTS=${EXECUTE_TESTS:-1}
+# Should static analysis be performed?
+export EXECUTE_STATIC_ANALIZER=${EXECUTE_STATIC_ANALIZER:-1}
+# Should the archive be generated?
+export EXECUTE_ARCHIVE=${EXECUTE_ARCHIVE:-1}
+
+# Keychain support
+# NOTE: this script will NOT restore the default login keychain. You should add a
+# post-build step to Jenkins to call `keychain.sh restore` even if the build fails.
+#
+# The keychain file, relative to WORKSPACE, to install for the build
+export BUILD_KEYCHAIN=${BUILD_KEYCHAIN:-""}
+# The password for the specified keychain
+export BUILD_KEYCHAIN_PASS=${BUILD_KEYCHAIN_PASS:-""}
+
 # You can enable uploading the build to Crashlytics by specifying CL_UPLOAD=1
 CL_UPLOAD=${CL_UPLOAD:-0}
 # Crashlytics Beta distribution lists
@@ -202,6 +221,10 @@ export CRASHLYTICS_UPLOAD_SCRIPT="crashlytics.sh"
 # returns the name of the profile file which should be present in the current directory
 # after the script exits successfully.
 export PROFILE_ACQUISITION_SCRIPT="local_profile.sh"
+
+# Script relative to $CI_DIR which will install a given default keychain or restore the
+# login keychain.
+export KEYCHAIN_SCRIPT="keychain.sh"
 
 # Echo the environment for debugging purposes
 if [ $DEBUG -ne 0 ]; then
@@ -281,77 +304,104 @@ echo "Acquiring provisioning profile \"$XC_PROFILE_NAME\""
 cd "$XC_PROFILE_HOME"
 PROFILE_FILE=`. "$CI_DIR/$PROFILE_ACQUISITION_SCRIPT" "$XC_PROFILE_TYPE" "$XC_PROFILE_NAME"`
 if [ -f "$PROFILE_FILE" ]; then
-	echo "Successfully acquired provisioning profile: \"$PROFILE_FILE\""
+	echo "Successfully acquired provisioning profile file: \"$PROFILE_FILE\""
 else
 	fail "Expected provisioning profile not found: \"$PROFILE_FILE\""
 fi
 
-## Test
-
-# Check to see if we have xcpretty available to format our test output
-# If so, we do a clean build, then test, with test result TAP formatted output to "$OUTPUT_DIR/test_results.tap" (re. TAP: see http://testanything.org )
-if [ -x "$XCPRETTY_B" ]; then
-	cd "$XC_WORKSPACE_DIR"
-	# Clean-build and execute the tests
-	echo "Testing..."
-	set -o pipefail && $XCODEBUILD_B -workspace "$XC_WORKSPACE" -scheme "$XC_SCHEME" -configuration "$XC_CONFIG" -sdk "iphonesimulator" clean test | xcpretty --no-utf --report junit --output "$OUTPUT_DIR/junit.xml"
+# Install the keychain
+# Prevent sensitive info from going to the console in debug mode.
+[ $DEBUG -ne 0 ] && set +x
+if [ "$BUILD_KEYCHAIN" = "" -o "$BUILD_KEYCHAIN_PASS" = "" ]; then
+	warn "No build keychain and/or no build keychain password specified."
 else
-	# xcpretty is not available to format our test output
-	warn "xcpretty is not available on the current PATH. No tests will be performed. Please install xcpretty https://github.com/supermarin/xcpretty"
+	echo "Installing build keychain \"$BUILD_KEYCHAIN\""
+	export KEYCHAIN_PASS="$BUILD_KEYCHAIN_PASS"
+	[ $DEBUG -ne 0 ] && set -x
+	`. "$CI_DIR/$KEYCHAIN_SCRIPT" install "$WORKSPACE/$BUILD_KEYCHAIN"`
+fi
+[ $DEBUG -ne 0 ] && set -x
+
+## Test
+if [ $EXECUTE_TESTS -ne 0 ]; then
+	# Check to see if we have xcpretty available to format our test output
+	# If so, we do a clean build, then test, with test result TAP formatted output to "$OUTPUT_DIR/test_results.tap" (re. TAP: see http://testanything.org )
+	if [ -x "$XCPRETTY_B" ]; then
+		cd "$XC_WORKSPACE_DIR"
+		# Clean-build and execute the tests
+		echo "Testing..."
+		set -o pipefail && $XCODEBUILD_B -workspace "$XC_WORKSPACE" -scheme "$XC_SCHEME" -configuration "$XC_CONFIG" -sdk "iphonesimulator" clean test | xcpretty --no-utf --report junit --output "$OUTPUT_DIR/junit.xml"
+	else
+		# xcpretty is not available to format our test output
+		warn "xcpretty is not available on the current PATH. No tests will be performed. Please install xcpretty https://github.com/supermarin/xcpretty"
+	fi
+else
+	echo "Tests disabled."
 fi
 
 ## Analyze
-# TODO: Analyze and output the results to Jenkins
-# See: http://blog.manbolo.com/2014/04/15/automated-static-code-analysis-with-xcode-5.1-and-jenkins
+if [ $EXECUTE_STATIC_ANALIZER -ne 0 ]; then
+ 	echo "TODO: Performing static analysis..."
+ 	# TODO: Analyze and output the results to Jenkins
+	# See: http://blog.manbolo.com/2014/04/15/automated-static-code-analysis-with-xcode-5.1-and-jenkins
+else
+ 	echo "Static analysis disabled."
+fi
 
 ## Archive
+if [ $EXECUTE_ARCHIVE -ne 0 ]; then
+	echo "Creating Archive..."
+	XC_ARCHIVE_PATH="$OUTPUT_DIR/$XC_PRODUCT_NAME.xcarchive"
+	cd "$XC_WORKSPACE_DIR"
+	if [ -x "$XCPRETTY_B" ]; then
+		# Clean-archive piped through xcpretty
+		set -o pipefail && $XCODEBUILD_B -workspace "$XC_WORKSPACE" -scheme "$XC_SCHEME" -configuration "$XC_CONFIG" clean archive -archivePath "$XC_ARCHIVE_PATH" | xcpretty --no-utf
+	else
+		# xcpretty is not available to format our output
+		echo "INFO: xcpretty is not available on the current PATH. Building without it. Please install xcpretty https://github.com/supermarin/xcpretty"
+		$XCODEBUILD_B -workspace "$XC_WORKSPACE" -scheme "$XC_SCHEME" -configuration "$XC_CONFIG" clean archive -archivePath "$XC_ARCHIVE_PATH"
+	fi
 
-echo "Creating Archive..."
-XC_ARCHIVE_PATH="$OUTPUT_DIR/$XC_PRODUCT_NAME.xcarchive"
-cd "$XC_WORKSPACE_DIR"
-if [ -x "$XCPRETTY_B" ]; then
-	# Clean-archive piped through xcpretty
-	set -o pipefail && $XCODEBUILD_B -workspace "$XC_WORKSPACE" -scheme "$XC_SCHEME" -configuration "$XC_CONFIG" clean archive -archivePath "$XC_ARCHIVE_PATH" | xcpretty --no-utf
+	# Export the archive
+	EXPORT_PATH="$OUTPUT_DIR/$IPA_NAME"
+	echo "Exporting archive to \"$EXPORT_PATH\""
+	$XCODEBUILD_B -exportArchive -exportFormat "IPA" -archivePath "$XC_ARCHIVE_PATH" -exportPath "$EXPORT_PATH" -exportProvisioningProfile "$XC_PROFILE_NAME"
+
+	# Zip up the dSYM file
+# Not needed at this time (crashlytics gets the dSYM itself).
+# 	DYSM_NAME=$(xc_config "DWARF_DSYM_FILE_NAME")
+# 	DSYM="$XC_ARCHIVE_PATH/dSYMs/$DYSM_NAME"
+# 	DSYM_ZIP="$OUTPUT_DIR/$DYSM_NAME.zip"
+# 	echo "Zipping dSYM \"$DSYM\" to \"$DSYM_ZIP\"..."
+# 	$ZIP_B -r -y "$DSYM_ZIP" "$DSYM"
+# 	echo "dSYM file ready for upload"
+
+	# Post Archive
+
+	# Fetch the release notes from source control
+	echo "Fetching release notes from source control..."
+	LAST_SUCCESS_REV=${LAST_SUCCESS_REV:-$("$CI_DIR/$LAST_SUCCESS_REV_SCRIPT" "$JOB_URL")}
+	[ "$LAST_SUCCESS_REV" = "" ] && warn "Could not determine last successful build revision." || echo "Last build success revision: $LAST_SUCCESS_REV"
+	[ "$LAST_SUCCESS_REV" = "" ] && RELEASE_NOTES=$($GIT_B show -s --format="$GIT_LOG_FORMAT" | $TAIL_B -r) || RELEASE_NOTES=$("$CI_DIR/$GIT_HISTORY_SCRIPT" "$LAST_SUCCESS_REV")
+	[ "$RELEASE_NOTES" = "" ] && RELEASE_NOTES="(no release notes)"
+	echo "Release Notes:"
+	echo "$RELEASE_NOTES"
+	# Write release notes to OUTPUT_DIR
+	echo "$RELEASE_NOTES" > "$OUTPUT_DIR/release_notes.txt"
+
+	# Upload to TestFlight
+	if [ $TF_UPLOAD -ne 0 ]; then
+		echo "Distributing to TestFlight list(s): $TF_DIST_LIST"
+		. "$CI_DIR/$TEST_FLIGHT_UPLOAD_SCRIPT" "$EXPORT_PATH" "$DSYM_ZIP" "$RELEASE_NOTES" "$TF_DIST_LIST"
+	fi
+
+	# Upload to Crashlytics
+	if [ $CL_UPLOAD -ne 0 ]; then
+		echo "Submitting IPA to Crashlytics"
+		. "$CI_DIR/$CRASHLYTICS_UPLOAD_SCRIPT" "$EXPORT_PATH" "$RELEASE_NOTES"
+	fi
 else
-	# xcpretty is not available to format our output
-	echo "INFO: xcpretty is not available on the current PATH. Building without it. Please install xcpretty https://github.com/supermarin/xcpretty"
-	$XCODEBUILD_B -workspace "$XC_WORKSPACE" -scheme "$XC_SCHEME" -configuration "$XC_CONFIG" clean archive -archivePath "$XC_ARCHIVE_PATH"
-fi
-
-# Export the archive
-EXPORT_PATH="$OUTPUT_DIR/$IPA_NAME"
-echo "Exporting archive to \"$EXPORT_PATH\""
-$XCODEBUILD_B -exportArchive -exportFormat "IPA" -archivePath "$XC_ARCHIVE_PATH" -exportPath "$EXPORT_PATH" -exportProvisioningProfile "$XC_PROFILE_NAME"
-
-# Zip up the dSYM file
-DYSM_NAME=$(xc_config "DWARF_DSYM_FILE_NAME")
-DSYM="$XC_ARCHIVE_PATH/dSYMs/$DYSM_NAME"
-DSYM_ZIP="$OUTPUT_DIR/$DYSM_NAME.zip"
-echo "Zipping dSYM \"$DSYM\" to \"$DSYM_ZIP\"..."
-$ZIP_B -r -y "$DSYM_ZIP" "$DSYM"
-echo "dSYM file ready for upload"
-
-# Post Archive
-
-# Fetch the release notes from source control
-echo "Fetching release notes from source control..."
-LAST_SUCCESS_REV=${LAST_SUCCESS_REV:-$("$CI_DIR/$LAST_SUCCESS_REV_SCRIPT" "$JOB_URL")}
-[ "$LAST_SUCCESS_REV" = "" ] && warn "Could not determine last successful build revision." || echo "Last build success revision: $LAST_SUCCESS_REV"
-[ "$LAST_SUCCESS_REV" = "" ] && RELEASE_NOTES=$($GIT_B show -s --format="$GIT_LOG_FORMAT" | $TAIL_B -r) || RELEASE_NOTES=$("$CI_DIR/$GIT_HISTORY_SCRIPT" "$LAST_SUCCESS_REV")
-[ "$RELEASE_NOTES" = "" ] && RELEASE_NOTES="(no release notes)"
-echo -e "Release Notes:\n$RELEASE_NOTES"
-#TODO Write release notes to OUTPUT_DIR
-
-# Upload to TestFlight
-if [ $TF_UPLOAD -ne 0 ]; then
-	echo "Distributing to TestFlight list(s): $TF_DIST_LIST"
-	. "$CI_DIR/$TEST_FLIGHT_UPLOAD_SCRIPT" "$EXPORT_PATH" "$DSYM_ZIP" "$RELEASE_NOTES" "$TF_DIST_LIST"
-fi
-
-# Upload to Crashlytics
-if [ $CL_UPLOAD -ne 0 ]; then
-	echo "Submitting IPA to Crashlytics"
-	. "$CI_DIR/$CRASHLYTICS_UPLOAD_SCRIPT" "$EXPORT_PATH" "$RELEASE_NOTES"
+	echo "Archive disabled."
 fi
 
 echo "Build finished"

@@ -64,8 +64,8 @@ if [ "$COMMAND" = "install" ]; then
 	$SECURITY_B unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_FILE"
 elif [ "$COMMAND" = "restore" ]; then
 	# Default to login keychain
-	$SECURITY_B list-keychains -s "~/Library/Keychains/login.keychain"
-	$SECURITY_B default-keychain -s "~/Library/Keychains/login.keychain"
+	$SECURITY_B list-keychains -s "login.keychain"
+	$SECURITY_B default-keychain -s "login.keychain"
 else
 	usage
 fi
