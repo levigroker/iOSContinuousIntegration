@@ -7,6 +7,8 @@
 # Example:
 # % ./last_success_rev.sh http://myserver.com:8080/jenkins/job/MyJob/
 #
+# NOTE: Be sure the access token represents a user which has read access on the job.
+#
 # See https://wiki.jenkins-ci.org/display/JENKINS/Authenticating+scripted+clients
 #
 # Levi Brown

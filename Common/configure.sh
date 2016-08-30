@@ -92,6 +92,8 @@ export CRASHLYTICS_UPLOAD_SCRIPT="crashlytics.sh"
 # returns the name of the profile file which should be present in the current directory
 # after the script exits successfully.
 export PROFILE_ACQUISITION_SCRIPT="local_profile.sh"
+# Script relative to $CI_DIR which will handle posting to Slack
+export SLACK_POST_SCRIPT="slack.sh"
 
 # The type of profile we will fetch with the PROFILE_ACQUISITION_SCRIPT. Should be either "development" or "distribution".
 export PROFILE_TYPE="distribution"

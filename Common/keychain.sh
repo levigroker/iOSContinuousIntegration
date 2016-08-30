@@ -7,7 +7,9 @@
 # Essentially:
 # 1) Create your build Keychain. This will contain the private key/certificate used for codesigning:
 #     security create-keychain -p [keychain_password] MyKeychain.keychain
-# 2) Import the private key (*.p12) for your CodeSign identity:
+# 2) We don't want the keychain to lock on timeout or lock on sleep, so configure it thusly:
+#     security set-keychain-settings "$KEYCHAIN_NAME"
+# 3) Import the private key (*.p12) for your CodeSign identity:
 #     security import MyPrivateKey.p12 -t agg -k MyKeychain.keychain -P [p12_Password] -A
 #
 # Levi Brown
